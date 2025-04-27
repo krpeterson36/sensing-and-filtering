@@ -14,6 +14,7 @@ def fit_line(data):
 
     slope = 0.0
     b = 0.0
+    t = 1.
 
     for i in range(0, len(data)):
         for j in range(0, len(data)):
@@ -24,9 +25,9 @@ def fit_line(data):
                 y1 = dist1 * np.sin(ang1)
                 x2 = dist2 * np.cos(ang2)
                 y2 = dist2 * np.sin(ang2)
-                slope = slope + ((y2-y1)/(x2-x1))
-
-    slope = slope / (len(data)**2 - len(data))
+                t_slope = ((y2-y1)/(x2-x1))
+                slope = slope + ((t_slope - slope)/t)
+                t = t + 1.
 
     for dist, ang in data:
         x = dist * np.cos(ang)
