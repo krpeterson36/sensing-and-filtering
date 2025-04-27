@@ -5,13 +5,37 @@ WRITE = False # set to True if you want to write the data to a CSV file and proc
 
 wall = [(0.1,4.), (3.,0.1)]
 
+sigma = 0.
+
 robot = [0.,0.]
 
 def fit_line(data):
     # add your least-squares code here
-    a = 1
-    b = 1
-    return a, b
+
+    slope = 0.0
+    b = 0.0
+
+    for i in range(0, len(data)):
+        for j in range(0, len(data)):
+            if (i != j):
+                dist1, ang1 = data[i]
+                dist2, ang2 = data[j]
+                x1 = dist1 * np.cos(ang1)
+                y1 = dist1 * np.sin(ang1)
+                x2 = dist2 * np.cos(ang2)
+                y2 = dist2 * np.sin(ang2)
+                slope = slope + ((y2-y1)/(x2-x1))
+
+    slope = slope / (len(data)**2 - len(data))
+
+    for dist, ang in data:
+        x = dist * np.cos(ang)
+        y = dist * np.sin(ang)
+        b = b + (y - slope*x)
+    
+    b = b / len(data)
+
+    return slope, b
 
 # plots results (will open a window / requires Xforwarding to view over SSH)
 def PlotResults(data, a, b, wall, robot):
@@ -39,7 +63,7 @@ def PlotResults(data, a, b, wall, robot):
     ax.axis('equal')
     plt.show()
 
-def FindDistances(wall, robot):
+def FindDistances(wall, robot, sigma):
     wall = np.array(wall)
     robot = np.array(robot)
     data = []
@@ -48,7 +72,15 @@ def FindDistances(wall, robot):
         if t > 0 and (0 < u) and (1 > u):
             dist = np.linalg.norm(pt - robot)
             data.append((round(dist,2), round(theta,2)))
-    return np.array(data)
+    noise = np.random.normal(loc=0.0, scale=sigma, size=len(data))
+    data = np.array(data)
+    dat = []
+    i = 0
+    for dist, ang in data:
+        dat.append((dist + noise[i], ang))
+        i = i + 1
+
+    return np.array(dat)
 
 def ShootRay(pt, theta, v1, v2):
     '''
@@ -72,7 +104,7 @@ def ShootRay(pt, theta, v1, v2):
     return t, u, pint
 
 def main():
-    dat = FindDistances(wall, robot)
+    dat = FindDistances(wall, robot, sigma)
     print("raw data (distance, heading):", dat)
     # optionally, write data to file to process in another language
     if WRITE:
