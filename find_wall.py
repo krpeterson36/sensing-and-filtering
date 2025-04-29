@@ -6,7 +6,6 @@ WRITE = False # set to True if you want to write the data to a CSV file and proc
 
 wall = [(0.1,4.), (3.,0.1)]
 
-sigma = 0.
 true_a = -1.3421249130989874
 true_b = 4.1298880303712995
 
@@ -15,32 +14,16 @@ robot = [0.,0.]
 
 def fit_line(data):
     # add your least-squares code here
-
-    slope = 0.0
-    b = 0.0
-    t = 1.
-
-    for i in range(0, len(data)):
-        for j in range(0, len(data)):
-            if (i != j):
-                dist1, ang1 = data[i]
-                dist2, ang2 = data[j]
-                x1 = dist1 * np.cos(ang1)
-                y1 = dist1 * np.sin(ang1)
-                x2 = dist2 * np.cos(ang2)
-                y2 = dist2 * np.sin(ang2)
-                t_slope = ((y2-y1)/(x2-x1))
-                slope = slope + ((t_slope - slope)/t)
-                t = t + 1.
+    x = []
+    y = []
 
     for dist, ang in data:
-        x = dist * np.cos(ang)
-        y = dist * np.sin(ang)
-        b = b + (y - slope*x)
-    
-    b = b / len(data)
+        x.append((dist * np.cos(ang), 1.))
+        y.append((dist * np.sin(ang)))
 
-    return slope, b
+    a, b = np.linalg.lstsq(x, y)[0]
+
+    return a, b
 
 # plots results (will open a window / requires Xforwarding to view over SSH)
 def PlotResults(data, a, b, wall, robot):
@@ -108,13 +91,13 @@ def ShootRay(pt, theta, v1, v2):
     pint = np.array([pt[0] + np.cos(theta)*t, pt[1] + np.sin(theta)*t])
     return t, u, pint
 
-def calcMse(data):
+def calcMse(data, a, b):
     err = 0.
     for dist, ang in data:
-        true_d = abs((true_b)/(np.sin(ang)-true_a*np.cos(ang)))
-        temp_err = (true_d - dist)**2
+        d = abs((b)/(np.sin(ang)-a*np.cos(ang)))
+        temp_err = (dist - d)**2
         err = err + temp_err
-    err = err/len(data)
+    err = err
     return err
 
 def calcVar(data):
@@ -125,31 +108,37 @@ def calcVar(data):
     var = 0.
     for dist, ang in data:
         var = var + (dist - mean)**2
-    var = var/(len(data))
+    var = var
     return var
 
-def calcR2(data):
-    mse = calcMse(data)
+def calcR2(data, a, b):
+    mse = calcMse(data, a, b)
     var = calcVar(data)
     r2 = 1 - (mse/var)
     return r2
 
 def main():
-    avgR2 = 0.
-    for i in range(100):
-        dat = FindDistances(wall, robot, sigma)
-        # print("raw data (distance, heading):", dat)
-        # optionally, write data to file to process in another language
-        if WRITE:
-            np.savetxt('sensor-data.csv', dat, delimiter=',', fmt='%f')
-        a, b = fit_line(dat)
-        # print(f"a: {a}, b: {b}")
-        r2 = calcR2(dat)
-        avgR2 = avgR2 + r2
-        # print(f"R2: {r2}")
-        # PlotResults(dat, a, b, wall, robot)
-    avgR2 = avgR2 / 100
-    print(f"Sigma: {sigma}, R2: {avgR2}")
+    for i in range(10):
+        stdDev = float(i) * 0.1
+        avgR2 = 0.
+        avgA = 0.
+        avgB = 0.
+        for j in range(100):
+            dat = FindDistances(wall, robot, stdDev)
+            # print("raw data (distance, heading):", dat)
+            # optionally, write data to file to process in another language
+            if WRITE:
+                np.savetxt('sensor-data.csv', dat, delimiter=',', fmt='%f')
+            a, b = fit_line(dat)
+            # print(f"a: {a}, b: {b}")
+            r2 = calcR2(dat, a, b)
+            avgR2 = avgR2 + r2
+            # print(f"R2: {r2}")
+            # PlotResults(dat, a, b, wall, robot)
+            avgA = avgA + a
+            avgB = avgB + b
+        avgR2 = avgR2 / 100.
+        print(f"Sigma: {stdDev}, R2: {avgR2}")
 
 if __name__ == '__main__':
     main()
