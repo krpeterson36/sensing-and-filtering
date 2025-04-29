@@ -1,11 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 WRITE = False # set to True if you want to write the data to a CSV file and process in another language
 
 wall = [(0.1,4.), (3.,0.1)]
 
-sigma = 0.
+sigma = 0.1
+true_a = -1.3421249130989874
+true_b = 4.1298880303712995
+
 
 robot = [0.,0.]
 
@@ -104,6 +108,39 @@ def ShootRay(pt, theta, v1, v2):
     pint = np.array([pt[0] + np.cos(theta)*t, pt[1] + np.sin(theta)*t])
     return t, u, pint
 
+def calcMse(data):
+    err = 0
+    for dist, ang in data:
+        x = dist * np.cos(ang)
+        y = dist * np.sin(ang)
+        temp_err = ((true_a*x + true_b) - y)**2
+        err = err + temp_err
+    err = err/len(data)
+    return err
+
+def calcVar(data):
+    mean = 0
+    for dist, ang in data:
+        x = dist * np.cos(ang)
+        y = dist * np.sin(ang)
+        p = math.sqrt(y**2 + x**2)
+        mean = mean + p
+    mean = mean/len(data)
+    var = 0
+    for dist, ang in data:
+        x = dist * np.cos(ang)
+        y = dist * np.sin(ang)
+        p = math.sqrt(x**2 + y**2)
+        var = var + (p - mean)**2
+    var = var/(len(data)-1)
+    return var
+
+def calcR2(data):
+    mse = calcMse(data)
+    var = calcVar(data)
+    r2 = 1 - (mse/var)
+    return r2
+
 def main():
     dat = FindDistances(wall, robot, sigma)
     print("raw data (distance, heading):", dat)
@@ -111,6 +148,9 @@ def main():
     if WRITE:
         np.savetxt('sensor-data.csv', dat, delimiter=',', fmt='%f')
     a, b = fit_line(dat)
+    print(f"a: {a}, b: {b}")
+    r2 = calcR2(dat)
+    print(f"R2: {r2}")
     PlotResults(dat, a, b, wall, robot)
 
 if __name__ == '__main__':
