@@ -6,7 +6,7 @@ WRITE = False # set to True if you want to write the data to a CSV file and proc
 
 wall = [(0.1,4.), (3.,0.1)]
 
-sigma = 0.1
+sigma = 0.
 true_a = -1.3421249130989874
 true_b = 4.1298880303712995
 
@@ -109,30 +109,23 @@ def ShootRay(pt, theta, v1, v2):
     return t, u, pint
 
 def calcMse(data):
-    err = 0
+    err = 0.
     for dist, ang in data:
-        x = dist * np.cos(ang)
-        y = dist * np.sin(ang)
-        temp_err = ((true_a*x + true_b) - y)**2
+        true_d = abs((true_b)/(np.sin(ang)-true_a*np.cos(ang)))
+        temp_err = (true_d - dist)**2
         err = err + temp_err
     err = err/len(data)
     return err
 
 def calcVar(data):
-    mean = 0
+    mean = 0.
     for dist, ang in data:
-        x = dist * np.cos(ang)
-        y = dist * np.sin(ang)
-        p = math.sqrt(y**2 + x**2)
-        mean = mean + p
+        mean = mean + dist
     mean = mean/len(data)
-    var = 0
+    var = 0.
     for dist, ang in data:
-        x = dist * np.cos(ang)
-        y = dist * np.sin(ang)
-        p = math.sqrt(x**2 + y**2)
-        var = var + (p - mean)**2
-    var = var/(len(data)-1)
+        var = var + (dist - mean)**2
+    var = var/(len(data))
     return var
 
 def calcR2(data):
@@ -142,16 +135,21 @@ def calcR2(data):
     return r2
 
 def main():
-    dat = FindDistances(wall, robot, sigma)
-    print("raw data (distance, heading):", dat)
-    # optionally, write data to file to process in another language
-    if WRITE:
-        np.savetxt('sensor-data.csv', dat, delimiter=',', fmt='%f')
-    a, b = fit_line(dat)
-    print(f"a: {a}, b: {b}")
-    r2 = calcR2(dat)
-    print(f"R2: {r2}")
-    PlotResults(dat, a, b, wall, robot)
+    avgR2 = 0.
+    for i in range(100):
+        dat = FindDistances(wall, robot, sigma)
+        # print("raw data (distance, heading):", dat)
+        # optionally, write data to file to process in another language
+        if WRITE:
+            np.savetxt('sensor-data.csv', dat, delimiter=',', fmt='%f')
+        a, b = fit_line(dat)
+        # print(f"a: {a}, b: {b}")
+        r2 = calcR2(dat)
+        avgR2 = avgR2 + r2
+        # print(f"R2: {r2}")
+        # PlotResults(dat, a, b, wall, robot)
+    avgR2 = avgR2 / 100
+    print(f"Sigma: {sigma}, R2: {avgR2}")
 
 if __name__ == '__main__':
     main()
