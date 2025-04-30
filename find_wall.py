@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import math
 
 WRITE = False # set to True if you want to write the data to a CSV file and process in another language
 
@@ -21,7 +20,7 @@ def fit_line(data):
         x.append((dist * np.cos(ang), 1.))
         y.append((dist * np.sin(ang)))
 
-    a, b = np.linalg.lstsq(x, y)[0]
+    a, b = np.linalg.lstsq(x, y, rcond=None)[0]
 
     return a, b
 
@@ -94,7 +93,7 @@ def ShootRay(pt, theta, v1, v2):
 def calcMse(data, a, b):
     err = 0.
     for dist, ang in data:
-        d = abs((b)/(np.sin(ang)-a*np.cos(ang)))
+        d = (abs((b)/(np.sin(ang)-a*np.cos(ang))))
         temp_err = (dist - d)**2
         err = err + temp_err
     err = err
@@ -118,11 +117,12 @@ def calcR2(data, a, b):
     return r2
 
 def main():
+    stdDevs = []
+    r2s = []
+    avgs = []
     for i in range(10):
         stdDev = float(i) * 0.1
         avgR2 = 0.
-        avgA = 0.
-        avgB = 0.
         for j in range(100):
             dat = FindDistances(wall, robot, stdDev)
             # print("raw data (distance, heading):", dat)
@@ -135,10 +135,19 @@ def main():
             avgR2 = avgR2 + r2
             # print(f"R2: {r2}")
             # PlotResults(dat, a, b, wall, robot)
-            avgA = avgA + a
-            avgB = avgB + b
         avgR2 = avgR2 / 100.
-        print(f"Sigma: {stdDev}, R2: {avgR2}")
+        stdDevs.append(stdDev)
+        r2s.append(avgR2)
+        avgs.append((stdDev, avgR2))
+    plt.plot(stdDevs, r2s, color = 'g', linestyle = 'dashed',
+         marker = 'o',label = "R2")
+    plt.xlabel('Standard Deviation')
+    plt.ylabel('R2')
+    plt.title('R2 vs Standard Deviation')
+    plt.legend()
+    plt.show()
+    np.savetxt('sigma-data.csv', avgs, delimiter=',', fmt='%f')
+    
 
 if __name__ == '__main__':
     main()
